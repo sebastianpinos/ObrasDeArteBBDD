@@ -12,7 +12,9 @@ public class Principal {
     public static void main(String[] args) {
         try {
             // UIManager.setLookAndFeel("javax.swing.plaf.nimbus.NimbusLookAndFeel");
-            UIManager.setLookAndFeel("com.formdev.flatlaf.FlatDarkLaf");
+            // UIManager.setLookAndFeel("com.formdev.flatlaf.FlatDarkLaf");
+            UIManager.setLookAndFeel("com.formdev.flatlaf.FlatDarculaLaf");
+
 
 
         } catch (Exception e) {
