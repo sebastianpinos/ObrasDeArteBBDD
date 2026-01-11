@@ -1,12 +1,8 @@
-package modelo;
+package modelo.entity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Entidad que representa una Galería de Arte
- * Equivalente a la tabla 'galeria' en la base de datos
- */
 public class Galeria {
     private Integer idGaleria;
     private String nombre;

@@ -1,12 +1,8 @@
-package modelo;
+package modelo.entity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Entidad que representa una Exposición de Arte
- * Equivalente a la tabla 'exposicion' en la base de datos
- */
 public class Exposicion {
     private Integer idExposicion;
     private Integer idArtista;

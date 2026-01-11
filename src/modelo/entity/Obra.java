@@ -1,11 +1,7 @@
-package modelo;
+package modelo.entity;
 
 import java.time.LocalDateTime;
 
-/**
- * Entidad que representa una Obra de Arte Urbano
- * Equivalente a la tabla 'obra' en la base de datos
- */
 public class Obra {
     private Integer idObra;
     private String titulo;

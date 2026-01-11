@@ -1,12 +1,8 @@
-package modelo;
+package modelo.entity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * Entidad que representa un Artista Urbano
- * Equivalente a la tabla 'artista' en la base de datos
- */
 public class Artista {
     private Integer idArtista;
     private String nombreArtistico;

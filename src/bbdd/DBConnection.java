@@ -1,13 +1,9 @@
-package util;
+package bbdd;
 
 import java.io.*;
 import java.sql.*;
 import java.util.Properties;
 
-/**
- * Clase Singleton para gestionar la conexión a la base de datos MySQL
- * Base de datos: arte_urbano_db
- */
 public class DBConnection {
     private static DBConnection instance;
     private Connection connection;
@@ -27,18 +23,11 @@ public class DBConnection {
     private static final String DEFAULT_PASSWORD = "";
     private static final String DEFAULT_ADMIN_PASSWORD = "Admin123";
 
-    /**
-     * Constructor privado para patrón Singleton
-     */
     private DBConnection() {
         loadProperties();
         connect();
     }
 
-    /**
-     * Obtiene la instancia única de DBConnection
-     * @return instancia de DBConnection
-     */
     public static DBConnection getInstance() {
         if (instance == null) {
             synchronized (DBConnection.class) {
@@ -50,10 +39,6 @@ public class DBConnection {
         return instance;
     }
 
-    /**
-     * Carga las propiedades desde el archivo de configuración
-     * Si no existe, crea uno con valores por defecto
-     */
     private void loadProperties() {
         Properties props = new Properties();
         File file = new File(PROPERTIES_FILE);
@@ -80,9 +65,6 @@ public class DBConnection {
         }
     }
 
-    /**
-     * Establece los valores por defecto de las propiedades
-     */
     private void setDefaultProperties() {
         this.ip = DEFAULT_IP;
         this.port = DEFAULT_PORT;
@@ -92,9 +74,6 @@ public class DBConnection {
         this.adminPassword = DEFAULT_ADMIN_PASSWORD;
     }
 
-    /**
-     * Guarda las propiedades en el archivo de configuración
-     */
     private void saveProperties() {
         Properties props = new Properties();
         props.setProperty("db.ip", this.ip);
@@ -105,19 +84,12 @@ public class DBConnection {
         props.setProperty("admin.password", this.adminPassword);
 
         try (FileOutputStream fos = new FileOutputStream(PROPERTIES_FILE)) {
-            props.store(fos, "Configuración de Base de Datos - Arte Urbano");
+            props.store(fos, "Configuracion de Base de Datos");
         } catch (IOException e) {
             System.err.println("Error guardando propiedades: " + e.getMessage());
         }
     }
 
-    /**
-     * Establece y guarda nuevos valores de configuración
-     * @param ip dirección IP del servidor
-     * @param user usuario de la base de datos
-     * @param password contraseña de la base de datos
-     * @param adminPassword contraseña del administrador offline
-     */
     public void setPropValues(String ip, String user, String password, String adminPassword) {
         this.ip = ip;
         this.user = user;
@@ -126,13 +98,10 @@ public class DBConnection {
         saveProperties();
     }
 
-    /**
-     * Conecta con la base de datos MySQL
-     */
     public void connect() {
         try {
             if (connection != null && !connection.isClosed()) {
-                return; // Ya está conectado
+                return;
             }
 
             String url = "jdbc:mysql://" + ip + ":" + port + "/" + database + 
@@ -144,7 +113,6 @@ public class DBConnection {
 
             System.out.println("Conexión exitosa a la base de datos: " + database);
 
-            // Verificar y crear la base de datos si no existe
             createDatabaseIfNotExists();
 
         } catch (SQLException e) {
@@ -157,28 +125,20 @@ public class DBConnection {
         }
     }
 
-    /**
-     * Crea la base de datos y las tablas si no existen
-     * Cumple requisito: Crear BD desde la aplicación
-     */
     private void createDatabaseIfNotExists() {
         try {
             Statement stmt = connection.createStatement();
 
-            // Verificar si la base de datos existe
             ResultSet rs = stmt.executeQuery("SHOW DATABASES LIKE '" + database + "'");
 
             if (!rs.next()) {
-                // Crear base de datos
                 stmt.executeUpdate("CREATE DATABASE " + database);
                 stmt.executeUpdate("USE " + database);
-                System.out.println("✅ Base de datos creada: " + database);
+                System.out.println("Base de datos creada: " + database);
 
-                // Crear tablas
                 createTables();
             } else {
                 stmt.executeUpdate("USE " + database);
-                // Verificar si las tablas existen
                 ensureTablesExist();
             }
 
@@ -189,14 +149,10 @@ public class DBConnection {
         }
     }
 
-    /**
-     * Crea todas las tablas de la base de datos
-     */
     private void createTables() {
         try {
             Statement stmt = connection.createStatement();
 
-            // Tabla artista
             String createArtista = "CREATE TABLE IF NOT EXISTS artista(" +
                 "idArtista INT AUTO_INCREMENT PRIMARY KEY," +
                 "nombreArtistico VARCHAR(50) NOT NULL UNIQUE," +
@@ -208,7 +164,6 @@ public class DBConnection {
                 ")";
             stmt.executeUpdate(createArtista);
 
-            // Tabla galeria
             String createGaleria = "CREATE TABLE IF NOT EXISTS galeria(" +
                 "idGaleria INT AUTO_INCREMENT PRIMARY KEY," +
                 "nombre VARCHAR(50) NOT NULL UNIQUE," +
@@ -219,7 +174,6 @@ public class DBConnection {
                 ")";
             stmt.executeUpdate(createGaleria);
 
-            // Tabla exposicion
             String createExposicion = "CREATE TABLE IF NOT EXISTS exposicion(" +
                 "idExposicion INT AUTO_INCREMENT PRIMARY KEY," +
                 "idArtista INT NOT NULL," +
@@ -253,7 +207,7 @@ public class DBConnection {
                 ")";
             stmt.executeUpdate(createObra);
 
-            System.out.println("✅ Tablas creadas exitosamente");
+            System.out.println("Tablas creadas exitosamente");
 
             // Crear funciones
             createFunctions();
@@ -264,9 +218,6 @@ public class DBConnection {
         }
     }
 
-    /**
-     * Verifica que todas las tablas existan, si no, las crea
-     */
     private void ensureTablesExist() {
         try {
             DatabaseMetaData meta = connection.getMetaData();
@@ -282,14 +233,10 @@ public class DBConnection {
         }
     }
 
-    /**
-     * Crea las funciones almacenadas en la base de datos
-     */
     private void createFunctions() {
         try {
             Statement stmt = connection.createStatement();
 
-            // Función existeArtista
             String funcExisteArtista = 
                 "CREATE FUNCTION IF NOT EXISTS existeArtista(f_nombreArtistico VARCHAR(50)) " +
                 "RETURNS BIT " +
@@ -300,7 +247,6 @@ public class DBConnection {
                 "    RETURN 0; " +
                 "END";
 
-            // Función existeGaleria
             String funcExisteGaleria = 
                 "CREATE FUNCTION IF NOT EXISTS existeGaleria(f_nombreGaleria VARCHAR(50)) " +
                 "RETURNS BIT " +
@@ -311,7 +257,6 @@ public class DBConnection {
                 "    RETURN 0; " +
                 "END";
 
-            // Función existeExposicionArtista
             String funcExisteExposicion = 
                 "CREATE FUNCTION IF NOT EXISTS existeExposicionArtista(f_idArtista INT, f_titulo VARCHAR(100)) " +
                 "RETURNS BIT " +
@@ -322,7 +267,6 @@ public class DBConnection {
                 "    RETURN 0; " +
                 "END";
 
-            // Función existeObraExposicion
             String funcExisteObra = 
                 "CREATE FUNCTION IF NOT EXISTS existeObraExposicion(f_idExposicion INT, f_titulo VARCHAR(100)) " +
                 "RETURNS BIT " +
@@ -333,39 +277,28 @@ public class DBConnection {
                 "    RETURN 0; " +
                 "END";
 
-            // Nota: MySQL no permite CREATE FUNCTION IF NOT EXISTS antes de 8.0.29
-            // Por lo tanto, intentamos crear y capturamos la excepción si ya existe
-
-            System.out.println("✅ Funciones almacenadas verificadas");
+            System.out.println("Funciones almacenadas verificadas");
 
             stmt.close();
         } catch (SQLException e) {
-            // Es normal si las funciones ya existen
             if (!e.getMessage().contains("already exists")) {
                 System.err.println("Advertencia creando funciones: " + e.getMessage());
             }
         }
     }
 
-    /**
-     * Desconecta de la base de datos
-     */
     public void disconnect() {
         try {
             if (connection != null && !connection.isClosed()) {
                 connection.close();
                 isConnected = false;
-                System.out.println("🔌 Desconectado de la base de datos");
+                System.out.println("Desconectado de la base de datos");
             }
         } catch (SQLException e) {
             System.err.println("Error al desconectar: " + e.getMessage());
         }
     }
 
-    /**
-     * Verifica si está conectado a la base de datos
-     * @return true si está conectado
-     */
     public boolean isConnected() {
         try {
             return connection != null && !connection.isClosed() && isConnected;
@@ -373,11 +306,6 @@ public class DBConnection {
             return false;
         }
     }
-
-    /**
-     * Obtiene la conexión activa
-     * @return Connection object
-     */
     public Connection getConnection() {
         if (!isConnected()) {
             connect();
@@ -393,11 +321,6 @@ public class DBConnection {
     public String getPassword() { return password; }
     public String getAdminPassword() { return adminPassword; }
 
-    /**
-     * Ejecuta una consulta SQL y retorna un ResultSet
-     * @param query consulta SQL
-     * @return ResultSet con los resultados
-     */
     public ResultSet executeQuery(String query) {
         try {
             Statement stmt = connection.createStatement();
@@ -408,11 +331,6 @@ public class DBConnection {
         }
     }
 
-    /**
-     * Ejecuta una actualización SQL (INSERT, UPDATE, DELETE)
-     * @param query consulta SQL
-     * @return número de filas afectadas
-     */
     public int executeUpdate(String query) {
         try {
             Statement stmt = connection.createStatement();
@@ -425,12 +343,6 @@ public class DBConnection {
         }
     }
 
-    /**
-     * Llama a una función almacenada
-     * @param functionName nombre de la función
-     * @param params parámetros de la función
-     * @return resultado de la función
-     */
     public Object callFunction(String functionName, Object... params) {
         StringBuilder sql = new StringBuilder("SELECT " + functionName + "(");
         for (int i = 0; i < params.length; i++) {
@@ -448,7 +360,7 @@ public class DBConnection {
                 return rs.getObject(1);
             }
         } catch (SQLException e) {
-            System.err.println("Error llamando función: " + e.getMessage());
+            System.err.println("Error llamando funcion: " + e.getMessage());
         }
         return null;
     }
