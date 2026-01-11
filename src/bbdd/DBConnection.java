@@ -103,20 +103,33 @@ public class DBConnection {
                 return;
             }
 
-            String url = "jdbc:mysql://" + ip + ":" + port + "/" + database +
-                    "?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
+            // Conectar SIN especificar la base de datos
+            String urlWithoutDB = "jdbc:mysql://" + ip + ":" + port +
+                    "/?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
 
             Class.forName("com.mysql.cj.jdbc.Driver");
-            connection = DriverManager.getConnection(url, user, password);
+            connection = DriverManager.getConnection(urlWithoutDB, user, password);
+
+            System.out.println("Conexión exitosa al servidor MySQL");
+
+            // Crear la base de datos si no existe
+            createDatabaseIfNotExists();
+
+            // Cerrar y reconectar a la base de datos específica
+            connection.close();
+
+            String urlWithDB = "jdbc:mysql://" + ip + ":" + port + "/" + database +
+                    "?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
+
+            connection = DriverManager.getConnection(urlWithDB, user, password);
             isConnected = true;
 
-            System.out.println("Conexión exitosa a la base de datos: " + database);
-
-            createDatabaseIfNotExists();
+            System.out.println("Conectado y usando base de datos: " + database);
 
         } catch (SQLException e) {
             isConnected = false;
             System.err.println("Error de conexión SQL: " + e.getMessage());
+            e.printStackTrace();
             System.out.println("Modo offline activado");
         } catch (ClassNotFoundException e) {
             isConnected = false;
@@ -128,23 +141,73 @@ public class DBConnection {
         try {
             Statement stmt = connection.createStatement();
 
+            // PASO 1: Verificar si la BD existe
             ResultSet rs = stmt.executeQuery("SHOW DATABASES LIKE '" + database + "'");
+            boolean dbExists = rs.next();
+            rs.close();
 
-            if (!rs.next()) {
+            if (!dbExists) {
+                // La BD no existe, crearla
                 stmt.executeUpdate("CREATE DATABASE " + database);
-                stmt.executeUpdate("USE " + database);
-                System.out.println("Base de datos creada: " + database);
-
-                createTables();
+                System.out.println("✓ Base de datos creada: " + database);
             } else {
-                stmt.executeUpdate("USE " + database);
-                ensureTablesExist();
+                System.out.println("✓ Base de datos ya existe: " + database);
             }
 
-            rs.close();
+            // PASO 2: Usar la base de datos
+            stmt.executeUpdate("USE " + database);
+
+            // PASO 3: Verificar si las tablas existen
+            DatabaseMetaData meta = connection.getMetaData();
+            ResultSet rsTables = meta.getTables(null, database, "galeria", new String[]{"TABLE"});
+            boolean tablesExist = rsTables.next();
+            rsTables.close();
+
+            if (!tablesExist) {
+                System.out.println("→ Creando tablas...");
+                createTablesWithCleanup();
+            } else {
+                System.out.println("✓ Las tablas ya existen");
+                // Verificar funciones
+                createFunctions();
+            }
+
             stmt.close();
         } catch (SQLException e) {
             System.err.println("Error verificando/creando base de datos: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private void createTablesWithCleanup() {
+        try {
+            Statement stmt = connection.createStatement();
+
+            // LIMPIAR: Eliminar tablas si existen (en orden inverso por FK)
+            String[] dropTables = {
+                    "DROP TABLE IF EXISTS obra",
+                    "DROP TABLE IF EXISTS exposicion",
+                    "DROP TABLE IF EXISTS artista",
+                    "DROP TABLE IF EXISTS galeria"
+            };
+
+            for (String drop : dropTables) {
+                try {
+                    stmt.executeUpdate(drop);
+                } catch (SQLException e) {
+                    // Ignorar errores de DROP
+                }
+            }
+
+            System.out.println("→ Limpieza completada");
+
+            // CREAR tablas limpias
+            createTables();
+
+            stmt.close();
+        } catch (SQLException e) {
+            System.err.println("Error en limpieza de tablas: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -152,8 +215,8 @@ public class DBConnection {
         try {
             Statement stmt = connection.createStatement();
 
-            // Tabla galeria (CON created_at y updated_at)
-            String createGaleria = "CREATE TABLE IF NOT EXISTS galeria(" +
+            // Tabla galeria (SIN IF NOT EXISTS porque ya limpiamos)
+            String createGaleria = "CREATE TABLE galeria(" +
                     "idGaleria INT AUTO_INCREMENT PRIMARY KEY," +
                     "nombre VARCHAR(50) NOT NULL UNIQUE," +
                     "localizacion VARCHAR(50) NOT NULL," +
@@ -164,9 +227,10 @@ public class DBConnection {
                     "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
                     ")";
             stmt.executeUpdate(createGaleria);
+            System.out.println("✓ Tabla galeria creada");
 
-            // Tabla artista (CON created_at y updated_at)
-            String createArtista = "CREATE TABLE IF NOT EXISTS artista(" +
+            // Tabla artista
+            String createArtista = "CREATE TABLE artista(" +
                     "idArtista INT AUTO_INCREMENT PRIMARY KEY," +
                     "nombreArtistico VARCHAR(50) NOT NULL UNIQUE," +
                     "nombreReal VARCHAR(50) NOT NULL," +
@@ -178,9 +242,10 @@ public class DBConnection {
                     "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
                     ")";
             stmt.executeUpdate(createArtista);
+            System.out.println("✓ Tabla artista creada");
 
-            // Tabla exposicion (CON created_at y updated_at)
-            String createExposicion = "CREATE TABLE IF NOT EXISTS exposicion(" +
+            // Tabla exposicion
+            String createExposicion = "CREATE TABLE exposicion(" +
                     "idExposicion INT AUTO_INCREMENT PRIMARY KEY," +
                     "idArtista INT NOT NULL," +
                     "titulo VARCHAR(100) NOT NULL," +
@@ -195,9 +260,10 @@ public class DBConnection {
                     "FOREIGN KEY (idGaleria) REFERENCES galeria(idGaleria) ON DELETE CASCADE" +
                     ")";
             stmt.executeUpdate(createExposicion);
+            System.out.println("✓ Tabla exposicion creada");
 
-            // Tabla obra (CON created_at y updated_at, idExposicion NULL permitido)
-            String createObra = "CREATE TABLE IF NOT EXISTS obra(" +
+            // Tabla obra
+            String createObra = "CREATE TABLE obra(" +
                     "idObra INT AUTO_INCREMENT PRIMARY KEY," +
                     "titulo VARCHAR(100) NOT NULL," +
                     "idArtista INT NOT NULL," +
@@ -207,7 +273,7 @@ public class DBConnection {
                     "dimensiones FLOAT NOT NULL," +
                     "ubicacion VARCHAR(100) NOT NULL," +
                     "valoracion INT NOT NULL CHECK (valoracion BETWEEN 1 AND 10)," +
-                    "idExposicion INT," +  // ← CAMBIADO: Ahora permite NULL
+                    "idExposicion INT," + // NULLABLE
                     "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
                     "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
                     "FOREIGN KEY (idArtista) REFERENCES artista(idArtista) ON DELETE CASCADE," +
@@ -215,16 +281,21 @@ public class DBConnection {
                     "FOREIGN KEY (idGaleria) REFERENCES galeria(idGaleria) ON DELETE CASCADE" +
                     ")";
             stmt.executeUpdate(createObra);
+            System.out.println("✓ Tabla obra creada");
 
-            System.out.println("Tablas creadas exitosamente");
+            System.out.println("✓ Todas las tablas creadas exitosamente");
 
+            // Crear funciones
             createFunctions();
 
             stmt.close();
         } catch (SQLException e) {
             System.err.println("Error creando tablas: " + e.getMessage());
+            e.printStackTrace();
         }
     }
+
+
 
     private void ensureTablesExist() {
         try {
@@ -244,59 +315,73 @@ public class DBConnection {
         try {
             Statement stmt = connection.createStatement();
 
+            // Eliminar funciones si existen
+            try { stmt.executeUpdate("DROP FUNCTION IF EXISTS existeArtista"); } catch (SQLException e) {}
+            try { stmt.executeUpdate("DROP FUNCTION IF EXISTS existeGaleria"); } catch (SQLException e) {}
+            try { stmt.executeUpdate("DROP FUNCTION IF EXISTS existeExposicionArtista"); } catch (SQLException e) {}
+            try { stmt.executeUpdate("DROP FUNCTION IF EXISTS existeObraExposicion"); } catch (SQLException e) {}
+
+            // Crear funciones (sin IF NOT EXISTS)
             String funcExisteArtista =
-                    "CREATE FUNCTION IF NOT EXISTS existeArtista(f_nombreArtistico VARCHAR(50)) " +
+                    "CREATE FUNCTION existeArtista(f_nombreArtistico VARCHAR(50)) " +
                             "RETURNS BIT " +
                             "DETERMINISTIC " +
                             "BEGIN " +
-                            "    IF EXISTS (SELECT 1 FROM artista WHERE nombreArtistico = f_nombreArtistico) THEN " +
-                            "        RETURN 1; " +
-                            "    END IF; " +
-                            "    RETURN 0; " +
+                            "  IF EXISTS (SELECT 1 FROM artista WHERE nombreArtistico = f_nombreArtistico) THEN " +
+                            "    RETURN 1; " +
+                            "  END IF; " +
+                            "  RETURN 0; " +
                             "END";
+            stmt.executeUpdate(funcExisteArtista);
+            System.out.println("✓ Función existeArtista creada");
 
             String funcExisteGaleria =
-                    "CREATE FUNCTION IF NOT EXISTS existeGaleria(f_nombreGaleria VARCHAR(50)) " +
+                    "CREATE FUNCTION existeGaleria(f_nombreGaleria VARCHAR(50)) " +
                             "RETURNS BIT " +
                             "DETERMINISTIC " +
                             "BEGIN " +
-                            "    IF EXISTS (SELECT 1 FROM galeria WHERE nombre = f_nombreGaleria) THEN " +
-                            "        RETURN 1; " +
-                            "    END IF; " +
-                            "    RETURN 0; " +
+                            "  IF EXISTS (SELECT 1 FROM galeria WHERE nombre = f_nombreGaleria) THEN " +
+                            "    RETURN 1; " +
+                            "  END IF; " +
+                            "  RETURN 0; " +
                             "END";
+            stmt.executeUpdate(funcExisteGaleria);
+            System.out.println("✓ Función existeGaleria creada");
 
             String funcExisteExposicion =
-                    "CREATE FUNCTION IF NOT EXISTS existeExposicionArtista(f_idArtista INT, f_titulo VARCHAR(100)) " +
+                    "CREATE FUNCTION existeExposicionArtista(f_idArtista INT, f_titulo VARCHAR(100)) " +
                             "RETURNS BIT " +
                             "DETERMINISTIC " +
                             "BEGIN " +
-                            "    IF EXISTS (SELECT 1 FROM exposicion WHERE idArtista = f_idArtista AND titulo = f_titulo) THEN " +
-                            "        RETURN 1; " +
-                            "    END IF; " +
-                            "    RETURN 0; " +
+                            "  IF EXISTS (SELECT 1 FROM exposicion WHERE idArtista = f_idArtista AND titulo = f_titulo) THEN " +
+                            "    RETURN 1; " +
+                            "  END IF; " +
+                            "  RETURN 0; " +
                             "END";
+            stmt.executeUpdate(funcExisteExposicion);
+            System.out.println("✓ Función existeExposicionArtista creada");
 
             String funcExisteObra =
-                    "CREATE FUNCTION IF NOT EXISTS existeObraExposicion(f_idExposicion INT, f_titulo VARCHAR(100)) " +
+                    "CREATE FUNCTION existeObraExposicion(f_idExposicion INT, f_titulo VARCHAR(100)) " +
                             "RETURNS BIT " +
                             "DETERMINISTIC " +
                             "BEGIN " +
-                            "    IF EXISTS (SELECT 1 FROM obra WHERE idExposicion = f_idExposicion AND titulo = f_titulo) THEN " +
-                            "        RETURN 1; " +
-                            "    END IF; " +
-                            "    RETURN 0; " +
+                            "  IF EXISTS (SELECT 1 FROM obra WHERE idExposicion = f_idExposicion AND titulo = f_titulo) THEN " +
+                            "    RETURN 1; " +
+                            "  END IF; " +
+                            "  RETURN 0; " +
                             "END";
-
-            System.out.println("Funciones almacenadas verificadas");
+            stmt.executeUpdate(funcExisteObra);
+            System.out.println("✓ Función existeObraExposicion creada");
 
             stmt.close();
         } catch (SQLException e) {
-            if (!e.getMessage().contains("already exists")) {
-                System.err.println("Advertencia creando funciones: " + e.getMessage());
-            }
+            System.err.println("Error creando funciones: " + e.getMessage());
+            e.printStackTrace();
         }
     }
+
+
 
     public void disconnect() {
         try {
