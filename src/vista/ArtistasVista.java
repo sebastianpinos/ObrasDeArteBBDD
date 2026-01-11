@@ -342,4 +342,9 @@ public class ArtistasVista extends JPanel {
 
         return true;
     }
+
+    public void refrescarDatos() {
+        cargarTabla();
+    }
+
 }

@@ -310,4 +310,9 @@ public class GaleriasVista extends JPanel {
 
         return true;
     }
+
+    public void refrescarDatos() {
+        cargarTabla();
+    }
+
 }

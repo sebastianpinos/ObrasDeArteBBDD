@@ -375,4 +375,10 @@ public class ObrasVista extends JPanel {
         var galeria = model.findGaleriaById(idGaleria);
         return galeria != null ? galeria.getNombre() : "Desconocida";
     }
+
+    public void refrescarDatos() {
+        cargarCombos();
+        cargarTabla();
+    }
+
 }

@@ -15,8 +15,6 @@ public class Principal {
             // UIManager.setLookAndFeel("com.formdev.flatlaf.FlatDarkLaf");
             UIManager.setLookAndFeel("com.formdev.flatlaf.FlatDarculaLaf");
 
-
-
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -48,10 +46,8 @@ public class Principal {
         ventana.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         ventana.setSize(1400, 800);
 
-        // Crear JTabbedPane para las diferentes vistas
         JTabbedPane tabbedPane = new JTabbedPane();
 
-        // Agregar vista de Obras
         ObrasVista vistaObras = new ObrasVista(modelo);
         tabbedPane.addTab("Obras", vistaObras);
 
@@ -61,8 +57,17 @@ public class Principal {
         GaleriasVista vistaGalerias = new GaleriasVista(modelo);
         tabbedPane.addTab("Galerías", vistaGalerias);
 
+        // AGREGAR LISTENER - Auto-refrescar al cambiar de pestaña
+        tabbedPane.addChangeListener(e -> {
+            int index = tabbedPane.getSelectedIndex();
+            if (index == 0) vistaObras.refrescarDatos();
+            else if (index == 1) vistaArtistas.refrescarDatos();
+            else if (index == 2) vistaGalerias.refrescarDatos();
+        });
+
         ventana.add(tabbedPane);
-        ventana.setLocationRelativeTo(null); // Centrar ventana
+        ventana.setLocationRelativeTo(null);
         ventana.setVisible(true);
     }
+
 }
