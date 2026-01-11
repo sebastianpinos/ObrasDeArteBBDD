@@ -55,7 +55,6 @@ public class DBConnection {
                     this.adminPassword = props.getProperty("admin.password", DEFAULT_ADMIN_PASSWORD);
                 }
             } else {
-                // Crear archivo con valores por defecto
                 setDefaultProperties();
                 saveProperties();
             }
@@ -104,8 +103,8 @@ public class DBConnection {
                 return;
             }
 
-            String url = "jdbc:mysql://" + ip + ":" + port + "/" + database + 
-                        "?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
+            String url = "jdbc:mysql://" + ip + ":" + port + "/" + database +
+                    "?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
 
             Class.forName("com.mysql.cj.jdbc.Driver");
             connection = DriverManager.getConnection(url, user, password);
@@ -153,63 +152,72 @@ public class DBConnection {
         try {
             Statement stmt = connection.createStatement();
 
-            String createArtista = "CREATE TABLE IF NOT EXISTS artista(" +
-                "idArtista INT AUTO_INCREMENT PRIMARY KEY," +
-                "nombreArtistico VARCHAR(50) NOT NULL UNIQUE," +
-                "nombreReal VARCHAR(50) NOT NULL," +
-                "edad INT NOT NULL," +
-                "pais VARCHAR(30) NOT NULL," +
-                "fechaPrimeraObra DATE," +
-                "exposicionActiva BOOLEAN NOT NULL" +
-                ")";
-            stmt.executeUpdate(createArtista);
-
+            // Tabla galeria (CON created_at y updated_at)
             String createGaleria = "CREATE TABLE IF NOT EXISTS galeria(" +
-                "idGaleria INT AUTO_INCREMENT PRIMARY KEY," +
-                "nombre VARCHAR(50) NOT NULL UNIQUE," +
-                "localizacion VARCHAR(50) NOT NULL," +
-                "empleados INT NOT NULL," +
-                "fechaFundacion DATE," +
-                "director VARCHAR(40)" +
-                ")";
+                    "idGaleria INT AUTO_INCREMENT PRIMARY KEY," +
+                    "nombre VARCHAR(50) NOT NULL UNIQUE," +
+                    "localizacion VARCHAR(50) NOT NULL," +
+                    "empleados INT NOT NULL," +
+                    "fechaFundacion DATE," +
+                    "director VARCHAR(40)," +
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
+                    "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
+                    ")";
             stmt.executeUpdate(createGaleria);
 
+            // Tabla artista (CON created_at y updated_at)
+            String createArtista = "CREATE TABLE IF NOT EXISTS artista(" +
+                    "idArtista INT AUTO_INCREMENT PRIMARY KEY," +
+                    "nombreArtistico VARCHAR(50) NOT NULL UNIQUE," +
+                    "nombreReal VARCHAR(50) NOT NULL," +
+                    "edad INT NOT NULL," +
+                    "pais VARCHAR(30) NOT NULL," +
+                    "fechaPrimeraObra DATE," +
+                    "exposicionActiva BOOLEAN NOT NULL," +
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
+                    "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
+                    ")";
+            stmt.executeUpdate(createArtista);
+
+            // Tabla exposicion (CON created_at y updated_at)
             String createExposicion = "CREATE TABLE IF NOT EXISTS exposicion(" +
-                "idExposicion INT AUTO_INCREMENT PRIMARY KEY," +
-                "idArtista INT NOT NULL," +
-                "titulo VARCHAR(100) NOT NULL," +
-                "numeroObras INT NOT NULL," +
-                "duracionDias INT NOT NULL," +
-                "fechaInicio DATE NOT NULL," +
-                "idGaleria INT NOT NULL," +
-                "UNIQUE (idArtista, titulo)," +
-                "FOREIGN KEY (idArtista) REFERENCES artista(idArtista)," +
-                "FOREIGN KEY (idGaleria) REFERENCES galeria(idGaleria)" +
-                ")";
+                    "idExposicion INT AUTO_INCREMENT PRIMARY KEY," +
+                    "idArtista INT NOT NULL," +
+                    "titulo VARCHAR(100) NOT NULL," +
+                    "numeroObras INT NOT NULL," +
+                    "duracionDias INT NOT NULL," +
+                    "fechaInicio DATE NOT NULL," +
+                    "idGaleria INT NOT NULL," +
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
+                    "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+                    "UNIQUE (idArtista, titulo)," +
+                    "FOREIGN KEY (idArtista) REFERENCES artista(idArtista) ON DELETE CASCADE," +
+                    "FOREIGN KEY (idGaleria) REFERENCES galeria(idGaleria) ON DELETE CASCADE" +
+                    ")";
             stmt.executeUpdate(createExposicion);
 
-            // Tabla obra
+            // Tabla obra (CON created_at y updated_at, idExposicion NULL permitido)
             String createObra = "CREATE TABLE IF NOT EXISTS obra(" +
-                "idObra INT AUTO_INCREMENT PRIMARY KEY," +
-                "titulo VARCHAR(100) NOT NULL," +
-                "idArtista INT NOT NULL," +
-                "tecnica VARCHAR(50) NOT NULL," +
-                "idGaleria INT NOT NULL," +
-                "colaboradores INT NOT NULL," +
-                "dimensiones FLOAT NOT NULL," +
-                "ubicacion VARCHAR(100) NOT NULL," +
-                "valoracion INT NOT NULL," +
-                "idExposicion INT NOT NULL," +
-                "UNIQUE (idExposicion, idArtista, titulo)," +
-                "FOREIGN KEY (idArtista) REFERENCES artista(idArtista)," +
-                "FOREIGN KEY (idExposicion) REFERENCES exposicion(idExposicion)," +
-                "FOREIGN KEY (idGaleria) REFERENCES galeria(idGaleria)" +
-                ")";
+                    "idObra INT AUTO_INCREMENT PRIMARY KEY," +
+                    "titulo VARCHAR(100) NOT NULL," +
+                    "idArtista INT NOT NULL," +
+                    "tecnica VARCHAR(50) NOT NULL," +
+                    "idGaleria INT NOT NULL," +
+                    "colaboradores INT NOT NULL DEFAULT 0," +
+                    "dimensiones FLOAT NOT NULL," +
+                    "ubicacion VARCHAR(100) NOT NULL," +
+                    "valoracion INT NOT NULL CHECK (valoracion BETWEEN 1 AND 10)," +
+                    "idExposicion INT," +  // ← CAMBIADO: Ahora permite NULL
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
+                    "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+                    "FOREIGN KEY (idArtista) REFERENCES artista(idArtista) ON DELETE CASCADE," +
+                    "FOREIGN KEY (idExposicion) REFERENCES exposicion(idExposicion) ON DELETE SET NULL," +
+                    "FOREIGN KEY (idGaleria) REFERENCES galeria(idGaleria) ON DELETE CASCADE" +
+                    ")";
             stmt.executeUpdate(createObra);
 
             System.out.println("Tablas creadas exitosamente");
 
-            // Crear funciones
             createFunctions();
 
             stmt.close();
@@ -222,7 +230,6 @@ public class DBConnection {
         try {
             DatabaseMetaData meta = connection.getMetaData();
 
-            // Verificar tabla artista
             ResultSet rs = meta.getTables(null, null, "artista", new String[]{"TABLE"});
             if (!rs.next()) {
                 createTables();
@@ -237,45 +244,49 @@ public class DBConnection {
         try {
             Statement stmt = connection.createStatement();
 
-            String funcExisteArtista = 
-                "CREATE FUNCTION IF NOT EXISTS existeArtista(f_nombreArtistico VARCHAR(50)) " +
-                "RETURNS BIT " +
-                "BEGIN " +
-                "    IF EXISTS (SELECT 1 FROM artista WHERE nombreArtistico = f_nombreArtistico) THEN " +
-                "        RETURN 1; " +
-                "    END IF; " +
-                "    RETURN 0; " +
-                "END";
+            String funcExisteArtista =
+                    "CREATE FUNCTION IF NOT EXISTS existeArtista(f_nombreArtistico VARCHAR(50)) " +
+                            "RETURNS BIT " +
+                            "DETERMINISTIC " +
+                            "BEGIN " +
+                            "    IF EXISTS (SELECT 1 FROM artista WHERE nombreArtistico = f_nombreArtistico) THEN " +
+                            "        RETURN 1; " +
+                            "    END IF; " +
+                            "    RETURN 0; " +
+                            "END";
 
-            String funcExisteGaleria = 
-                "CREATE FUNCTION IF NOT EXISTS existeGaleria(f_nombreGaleria VARCHAR(50)) " +
-                "RETURNS BIT " +
-                "BEGIN " +
-                "    IF EXISTS (SELECT 1 FROM galeria WHERE nombre = f_nombreGaleria) THEN " +
-                "        RETURN 1; " +
-                "    END IF; " +
-                "    RETURN 0; " +
-                "END";
+            String funcExisteGaleria =
+                    "CREATE FUNCTION IF NOT EXISTS existeGaleria(f_nombreGaleria VARCHAR(50)) " +
+                            "RETURNS BIT " +
+                            "DETERMINISTIC " +
+                            "BEGIN " +
+                            "    IF EXISTS (SELECT 1 FROM galeria WHERE nombre = f_nombreGaleria) THEN " +
+                            "        RETURN 1; " +
+                            "    END IF; " +
+                            "    RETURN 0; " +
+                            "END";
 
-            String funcExisteExposicion = 
-                "CREATE FUNCTION IF NOT EXISTS existeExposicionArtista(f_idArtista INT, f_titulo VARCHAR(100)) " +
-                "RETURNS BIT " +
-                "BEGIN " +
-                "    IF EXISTS (SELECT 1 FROM exposicion WHERE idArtista = f_idArtista AND titulo = f_titulo) THEN " +
-                "        RETURN 1; " +
-                "    END IF; " +
-                "    RETURN 0; " +
-                "END";
+            String funcExisteExposicion =
+                    "CREATE FUNCTION IF NOT EXISTS existeExposicionArtista(f_idArtista INT, f_titulo VARCHAR(100)) " +
+                            "RETURNS BIT " +
+                            "DETERMINISTIC " +
+                            "BEGIN " +
+                            "    IF EXISTS (SELECT 1 FROM exposicion WHERE idArtista = f_idArtista AND titulo = f_titulo) THEN " +
+                            "        RETURN 1; " +
+                            "    END IF; " +
+                            "    RETURN 0; " +
+                            "END";
 
-            String funcExisteObra = 
-                "CREATE FUNCTION IF NOT EXISTS existeObraExposicion(f_idExposicion INT, f_titulo VARCHAR(100)) " +
-                "RETURNS BIT " +
-                "BEGIN " +
-                "    IF EXISTS (SELECT 1 FROM obra WHERE idExposicion = f_idExposicion AND titulo = f_titulo) THEN " +
-                "        RETURN 1; " +
-                "    END IF; " +
-                "    RETURN 0; " +
-                "END";
+            String funcExisteObra =
+                    "CREATE FUNCTION IF NOT EXISTS existeObraExposicion(f_idExposicion INT, f_titulo VARCHAR(100)) " +
+                            "RETURNS BIT " +
+                            "DETERMINISTIC " +
+                            "BEGIN " +
+                            "    IF EXISTS (SELECT 1 FROM obra WHERE idExposicion = f_idExposicion AND titulo = f_titulo) THEN " +
+                            "        RETURN 1; " +
+                            "    END IF; " +
+                            "    RETURN 0; " +
+                            "END";
 
             System.out.println("Funciones almacenadas verificadas");
 
@@ -306,6 +317,7 @@ public class DBConnection {
             return false;
         }
     }
+
     public Connection getConnection() {
         if (!isConnected()) {
             connect();
