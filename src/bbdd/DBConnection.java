@@ -89,14 +89,6 @@ public class DBConnection {
         }
     }
 
-    public void setPropValues(String ip, String user, String password, String adminPassword) {
-        this.ip = ip;
-        this.user = user;
-        this.password = password;
-        this.adminPassword = adminPassword;
-        saveProperties();
-    }
-
     public void connect() {
         try {
             if (connection != null && !connection.isClosed()) {
@@ -295,22 +287,6 @@ public class DBConnection {
         }
     }
 
-
-
-    private void ensureTablesExist() {
-        try {
-            DatabaseMetaData meta = connection.getMetaData();
-
-            ResultSet rs = meta.getTables(null, null, "artista", new String[]{"TABLE"});
-            if (!rs.next()) {
-                createTables();
-            }
-            rs.close();
-        } catch (SQLException e) {
-            System.err.println("Error verificando tablas: " + e.getMessage());
-        }
-    }
-
     private void createFunctions() {
         try {
             Statement stmt = connection.createStatement();
@@ -381,20 +357,6 @@ public class DBConnection {
         }
     }
 
-
-
-    public void disconnect() {
-        try {
-            if (connection != null && !connection.isClosed()) {
-                connection.close();
-                isConnected = false;
-                System.out.println("Desconectado de la base de datos");
-            }
-        } catch (SQLException e) {
-            System.err.println("Error al desconectar: " + e.getMessage());
-        }
-    }
-
     public boolean isConnected() {
         try {
             return connection != null && !connection.isClosed() && isConnected;
@@ -417,28 +379,6 @@ public class DBConnection {
     public String getUser() { return user; }
     public String getPassword() { return password; }
     public String getAdminPassword() { return adminPassword; }
-
-    public ResultSet executeQuery(String query) {
-        try {
-            Statement stmt = connection.createStatement();
-            return stmt.executeQuery(query);
-        } catch (SQLException e) {
-            System.err.println("Error ejecutando query: " + e.getMessage());
-            return null;
-        }
-    }
-
-    public int executeUpdate(String query) {
-        try {
-            Statement stmt = connection.createStatement();
-            int result = stmt.executeUpdate(query);
-            stmt.close();
-            return result;
-        } catch (SQLException e) {
-            System.err.println("Error ejecutando update: " + e.getMessage());
-            return -1;
-        }
-    }
 
     public Object callFunction(String functionName, Object... params) {
         StringBuilder sql = new StringBuilder("SELECT " + functionName + "(");

@@ -12,14 +12,9 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-/**
- * Vista para gestionar artistas
- * Campos: nombreArtistico, nombreReal, edad, pais, fechaPrimeraObra, exposicionActiva
- */
 public class ArtistasVista extends JPanel {
     private Model model;
 
-    // Componentes vinculados al .form
     private JPanel panelPrincipal;
     private JPanel topPanel;
     private JLabel lblTituloPrincipal;

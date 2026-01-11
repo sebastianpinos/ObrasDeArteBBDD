@@ -33,10 +33,8 @@ public class Principal {
                 return;
             }
 
-            // Crear el modelo
             Model modelo = new Model();
 
-            // Crear y mostrar la ventana principal
             crearVentanaPrincipal(modelo);
         });
     }
@@ -57,7 +55,6 @@ public class Principal {
         GaleriasVista vistaGalerias = new GaleriasVista(modelo);
         tabbedPane.addTab("Galerías", vistaGalerias);
 
-        // AGREGAR LISTENER - Auto-refrescar al cambiar de pestaña
         tabbedPane.addChangeListener(e -> {
             int index = tabbedPane.getSelectedIndex();
             if (index == 0) vistaObras.refrescarDatos();
